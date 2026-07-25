@@ -1,9 +1,7 @@
 VER=$(shell grep __version__ negar_gui/constants.py|cut -d= -f2|tr -d '\" ')
 
-# Detect whether 'uv' is available; otherwise, fall back to 'pip'
 PKG_TOOL := $(shell command -v uv >/dev/null 2>&1 && echo uv pip || echo pip)
 
-# Check whether Make is running inside a virtual environment
 VENV:=$(shell echo "$${VIRTUAL_ENV-}")
 NEGAR:=$(if $(VENV),$(VIRTUAL_ENV)/bin/negar-gui,$(HOME)/.local/bin/negar-gui)
 APP_DESKTOP:=$(HOME)/.local/share/applications/negar.desktop
@@ -16,8 +14,8 @@ help: ## Show this help message
 ver: ## Show the version number
 	@echo negar-gui, Ver. $(VER)
 
-.PHONY: generate_desktop_file
-generate_desktop_file: ## Generate a desktop icon for the GUI app
+.PHONY: install-desktop-file
+install-desktop-file: ## Generate a desktop icon for the GUI app
 	@cp negar_gui/icons/logo.png $(HOME)/.local/share/icons/negar.png
 	@echo "Generating the desktop file..."
 	cat <<EOF > $(APP_DESKTOP).tmp
@@ -47,66 +45,73 @@ uninstall: ## Uninstall negar-gui
 setup: ver ## Build source and wheel distribution packages
 	python -m build
 
-lins: generate_desktop_file ## Install negar-gui locally in editable/development mode
+.PHONY: install-dev
+install-dev: install-desktop-file ## Install negar-gui locally in editable/development mode
 	@$(PKG_TOOL) install -e .
 
-pins: ver generate_desktop_file ## Install negar-gui from PyPI using the current version
+.PHONY: install-pypi
+install-pypi: ver install-desktop-file ## Install negar-gui from PyPI using the current version
 	@$(PKG_TOOL) install negar-gui==$(VER)
 
-upypi: setup ## Publish the package to PyPI
+.PHONY: publish-pypi
+publish-pypi: setup ## Publish the package to PyPI
 	twine upload "dist/negar_gui-$(VER).tar.gz"
 
-utest: setup ## Publish the package to TestPyPI
+.PHONY: publish-testpypi
+publish-testpypi: setup ## Publish the package to TestPyPI
 	twine upload -r testpypi "dist/negar_gui-$(VER).tar.gz"
 
-upload: setup upypi utest ## Publish the package to both PyPI and TestPyPI
+upload: setup publish-pypi publish-testpypi ## Publish the package to both PyPI and TestPyPI
 
-nuCompile: setup ver ## Build a standalone binary with nuitka3
+.PHONY: compile-nuitka
+compile-nuitka: setup ver ## Build a standalone binary with nuitka3
 	nuitka3 negar_gui/main.py --standalone --onefile --linux-onefile-icon=negar_gui/icons/logo.png \
 	--enable-plugin=pyqt5 --nofollow-import-to=tkinter --lto=no \
 	-o dist/negar-gui-v$(VER).bin \
 	--output-dir=dist --remove-output \
 	--include-data-file=.negar/lib/python3.12/site-packages/pyuca/allkeys-9.0.0.txt=pyuca/allkeys-9.0.0.txt \
 	--include-data-file=.negar/lib/python3.12/site-packages/negar/data/untouchable.dat=negar/data/untouchable.dat
-	# --include-data-dir=.negar/lib/python3.12/site-packages/negar=negar/data \
-	# --module python-negar --include-package=python-negar
-	# --include-package-data=python-negar=*.dat \
-
 	ls -lh dist
 
-piCompile: setup ver ## Build a standalone binary with PyInstaller
+.PHONY: compile-pyinstaller
+compile-pyinstaller: setup ver ## Build a standalone binary with PyInstaller
 	@rm build/gui/ -rfv
 	pyinstaller -p negar_gui --onefile --windowed --clean -i"negar_gui/icons/logo.ico" \
 	--collect-data pyuca --noupx negar_gui/main.py -n negar-gui-v$(VER) \
 	--add-data negar_gui/ts/fa.qm:ts \
-	--add-data ../python-negar/negar/data/untouchable.dat:negar/data # &> pyins.out
+	--add-data ../python-negar/negar/data/untouchable.dat:negar/data
 	ls -lh dist
 
-trans: ver ## Update and compile Qt translation files using PyQt tools
+.PHONY: update-translations
+update-translations: ver ## Update and compile Qt translation files using PyQt tools
 	pylupdate5 -verbose negar_gui/Ui_mwin.py -ts negar_gui/ts/fa-uimwin.ts
 	pylupdate5 -verbose negar_gui/Ui_uwin.py -ts negar_gui/ts/fa-uiuwin.ts
 	pylupdate5 -verbose negar_gui/Ui_hwin.py -ts negar_gui/ts/fa-uihwin.ts
 	pylupdate5 -verbose negar_gui/main.py -ts negar_gui/ts/fa-main.ts
 	lrelease negar_gui/ts/fa-*.ts -qm negar_gui/ts/fa.qm
 
-res: ver ## Compile the Qt resource file using PyQt tools
+.PHONY: compile-resources
+compile-resources: ver ## Compile the Qt resource file using PyQt tools
 	pyrcc5 negar_gui/resource.qrc -o negar_gui/resource_rc.py
 	sed "s/PyQt5/PyQt6/g" -i negar_gui/resource_rc.py
 
-ui: ver ## Convert Qt UI files to Python scripts using PyQt6
+.PHONY: compile-ui
+compile-ui: ver ## Convert Qt UI files to Python scripts using PyQt6
 	pyuic6 negar_gui/mwin.ui -xo negar_gui/Ui_mwin.py
 	pyuic6 negar_gui/uwin.ui -xo negar_gui/Ui_uwin.py
 	pyuic6 negar_gui/hwin.ui -xo negar_gui/Ui_hwin.py
 
-
-sres: ver ## Compile the Qt resource file using PySide2 tools
+.PHONY: compile-resources-pyside2
+compile-resources-pyside2: ver ## Compile the Qt resource file using PySide2 tools
 	pyside2-rcc negar_gui/resource.qrc -o negar_gui/resource_rc.py
 
-sui: ver ## Convert Qt UI files to Python scripts using PySide2
+.PHONY: compile-ui-pyside2
+compile-ui-pyside2: ver ## Convert Qt UI files to Python scripts using PySide2
 	pyside2-uic --from-imports negar_gui/mwin.ui -o negar_gui/Ui_mwin.py
 	pyside2-uic --from-imports negar_gui/uwin.ui -o negar_gui/Ui_uwin.py
 
-strans: ver ## Update and compile Qt translation files using PySide2 tools
+.PHONY: update-translations-pyside2
+update-translations-pyside2: ver ## Update and compile Qt translation files using PySide2 tools
 	pyside2-lupdate -verbose negar_gui/Ui_mwin.py -ts negar_gui/ts/fa-uimwin.ts
 	pyside2-lupdate -verbose negar_gui/Ui_uwin.py -ts negar_gui/ts/fa-uiuwin.ts
 	pyside2-lupdate -verbose negar_gui/main.py -ts negar_gui/ts/fa-main.ts
@@ -151,3 +156,20 @@ clean: ver ## Clean build artifacts
 	@rm gui.dist/ -rfv
 	@rm negar*.spec -rfv
 	@rm negar_gui/__pycache__ -rfv
+
+# Backward-compat aliases
+.PHONY: generate_desktop_file lins pins upypi utest nuCompile piCompile
+.PHONY: trans res ui sres sui strans
+generate_desktop_file: install-desktop-file
+lins: install-dev
+pins: install-pypi
+upypi: publish-pypi
+utest: publish-testpypi
+nuCompile: compile-nuitka
+piCompile: compile-pyinstaller
+trans: update-translations
+res: compile-resources
+ui: compile-ui
+sres: compile-resources-pyside2
+sui: compile-ui-pyside2
+strans: update-translations-pyside2
