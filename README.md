@@ -63,6 +63,39 @@ If you want to just run it by calling the script, you need to install its depend
 
     $ pip install python-negar PyQt5 PyQt6 pyuca pyperclip redlines regex requests qrcode docopt Image pyqtdarktheme toml
 
+## Docker
+
+A Docker image is available on [Docker Hub](https://hub.docker.com/r/javadr/negar-gui):
+
+    $ docker pull javadr/negar-gui
+
+Build it locally:
+
+    $ make docker-build
+
+### Run on X11
+
+    $ docker run --rm \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
+        -v $HOME/.config/negar-gui:/home/negar/.config/negar-gui \
+        javadr/negar-gui
+
+### Run on Wayland
+
+    $ docker run --rm \
+        -e QT_QPA_PLATFORM=wayland \
+        -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+        -e WAYLAND_DISPLAY=$WAYLAND_DISPLAY \
+        -v $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY \
+        --device /dev/dri \
+        -v $HOME/.config/negar-gui:/home/negar/.config/negar-gui \
+        javadr/negar-gui
+
+### Auto-detect (via Makefile)
+
+    $ make docker-run
+
 ## Usage
 Just use one of the following in your terminal.
 
