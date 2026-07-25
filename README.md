@@ -63,6 +63,15 @@ If you want to just run it by calling the script, you need to install its depend
 
     $ pip install python-negar PyQt5 PyQt6 pyuca pyperclip redlines regex requests qrcode docopt Image pyqtdarktheme toml
 
+## Usage
+Just use one of the following in your terminal.
+
+    $ negar-gui
+
+or simply
+
+    $ negar
+
 ## Docker
 
 A Docker image is available on [Docker Hub](https://hub.docker.com/r/javadr/negar-gui):
@@ -95,12 +104,3 @@ Build it locally:
 ### Auto-detect (via Makefile)
 
     $ make docker-run
-
-## Usage
-Just use one of the following in your terminal.
-
-    $ negar-gui
-
-or simply
-
-    $ negar
