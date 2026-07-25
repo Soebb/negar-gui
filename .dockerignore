@@ -1,0 +1,15 @@
+.git/
+.github/
+.gitignore
+.idea/
+.mypy_cache/
+.pdm-python
+.ruff_cache/
+.serena/
+.vscode/
+__pycache__/
+*.pyc
+dist/
+build/
+*.egg-info/
+.gitkeep
