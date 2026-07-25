@@ -112,6 +112,37 @@ strans: ver ## Update and compile Qt translation files using PySide2 tools
 	pyside2-lupdate -verbose negar_gui/main.py -ts negar_gui/ts/fa-main.ts
 	pyside2-lrelease negar_gui/ts/fa-*.ts -qm negar_gui/ts/fa.qm
 
+.PHONY: docker-build
+docker-build: ## Build the Docker image
+	docker build -t negar-gui:latest -t negar-gui:$(VER) .
+
+.PHONY: docker-run
+docker-run: ## Run the Docker container (auto-detects Wayland / X11)
+	$(if $(WAYLAND_DISPLAY),\
+		docker run --rm \
+			-e QT_QPA_PLATFORM=wayland \
+			-e XDG_RUNTIME_DIR \
+			-e WAYLAND_DISPLAY \
+			-v $(XDG_RUNTIME_DIR)/$(WAYLAND_DISPLAY):$(XDG_RUNTIME_DIR)/$(WAYLAND_DISPLAY) \
+			--device /dev/dri \
+			-v $(HOME)/.config/negar-gui:/home/negar/.config/negar-gui \
+			negar-gui:latest,\
+		$(if $(DISPLAY),\
+			docker run --rm \
+				-e DISPLAY \
+				-v /tmp/.X11-unix:/tmp/.X11-unix \
+				-v $(HOME)/.config/negar-gui:/home/negar/.config/negar-gui \
+				negar-gui:latest,\
+			@echo "No display server detected (set DISPLAY for X11 or WAYLAND_DISPLAY for Wayland)"))
+
+.PHONY: docker-push
+docker-push: docker-build ## Tag and push the Docker image to Docker Hub
+	@[ -n "$(DOCKER_USER)" ] || { echo "Usage: make docker-push DOCKER_USER=<your-dockerhub-username>" >&2; exit 1; }
+	docker tag negar-gui:latest $(DOCKER_USER)/negar-gui:latest
+	docker tag negar-gui:latest $(DOCKER_USER)/negar-gui:$(VER)
+	docker push $(DOCKER_USER)/negar-gui:latest
+	docker push $(DOCKER_USER)/negar-gui:$(VER)
+
 clean: ver ## Clean build artifacts
 	@rm negar_gui.egg-info/ -rfv
 	@rm build/ -rfv
